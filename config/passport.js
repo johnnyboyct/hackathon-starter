@@ -11,6 +11,30 @@ const LinkedInStrategy = require('passport-linkedin-oauth2').Strategy;
 const OpenIDStrategy = require('passport-openid').Strategy;
 const OAuthStrategy = require('passport-oauth').OAuthStrategy;
 const OAuth2Strategy = require('passport-oauth').OAuth2Strategy;
+// const ForceDotComStrategy = require('passport-forcedotcom').Strategy;
+// passport.use(new ForceDotComStrategy({
+//   clientID: process.env.SFDC_KEY,
+//   clientSecret: process.env.SFDC_SECRET,
+//   scope: ['id','chatter_api'],
+//   callbackURL: '/auth/forcedotcom/callback'
+// }, function verify(token, refreshToken, profile, done) {
+//   console.log(profile);
+//   return done(null, profile);
+// }));
+
+
+//const RedditStrategy = require('passport-reddit').Strategy;
+// passport.use(new RedditStrategy({
+//     clientID: process.env.REDDIT_CONSUMER_KEY,
+//     clientSecret: process.env.REDDIT_CONSUMER_SECRET,
+//     callbackURL: "/auth/reddit/callback"
+//   },
+//   function(accessToken, refreshToken, profile, done) {
+//     User.findOrCreate({ redditId: profile.id }, function (err, user) {
+//       return done(err, user);
+//     });
+//   }
+// ));
 
 const User = require('../models/User');
 
@@ -65,7 +89,7 @@ passport.use(new FacebookStrategy({
   clientID: process.env.FACEBOOK_ID,
   clientSecret: process.env.FACEBOOK_SECRET,
   callbackURL: '/auth/facebook/callback',
-  profileFields: ['name', 'email', 'link', 'locale', 'timezone'],
+  profileFields: ['name', 'email', 'about', 'link', 'locale', 'timezone','posts','political'],
   passReqToCallback: true
 }, (req, accessToken, refreshToken, profile, done) => {
   if (req.user) {
@@ -77,11 +101,13 @@ passport.use(new FacebookStrategy({
       } else {
         User.findById(req.user.id, (err, user) => {
           if (err) { return done(err); }
+          console.log(profile);
           user.facebook = profile.id;
           user.tokens.push({ kind: 'facebook', accessToken });
           user.profile.name = user.profile.name || `${profile.name.givenName} ${profile.name.familyName}`;
           user.profile.gender = user.profile.gender || profile._json.gender;
           user.profile.picture = user.profile.picture || `https://graph.facebook.com/${profile.id}/picture?type=large`;
+          user.facebookProfile = profile._json;
           user.save((err) => {
             req.flash('info', { msg: 'Facebook account has been linked.' });
             done(err, user);
@@ -102,6 +128,7 @@ passport.use(new FacebookStrategy({
           done(err);
         } else {
           const user = new User();
+          console.log(profile);
           user.email = profile._json.email;
           user.facebook = profile.id;
           user.tokens.push({ kind: 'facebook', accessToken });
@@ -109,6 +136,7 @@ passport.use(new FacebookStrategy({
           user.profile.gender = profile._json.gender;
           user.profile.picture = `https://graph.facebook.com/${profile.id}/picture?type=large`;
           user.profile.location = (profile._json.location) ? profile._json.location.name : '';
+          user.facebookProfile = profile._json;
           user.save((err) => {
             done(err, user);
           });
@@ -253,6 +281,7 @@ passport.use(new GoogleStrategy({
           user.profile.name = user.profile.name || profile.displayName;
           user.profile.gender = user.profile.gender || profile._json.gender;
           user.profile.picture = user.profile.picture || profile._json.image.url;
+          user.googleProfile = profile._json;
           user.save((err) => {
             req.flash('info', { msg: 'Google account has been linked.' });
             done(err, user);
@@ -291,11 +320,12 @@ passport.use(new GoogleStrategy({
 /**
  * Sign in with LinkedIn.
  */
+
 passport.use(new LinkedInStrategy({
   clientID: process.env.LINKEDIN_ID,
   clientSecret: process.env.LINKEDIN_SECRET,
   callbackURL: process.env.LINKEDIN_CALLBACK_URL,
-  scope: ['r_basicprofile', 'r_emailaddress'],
+  scope: ['r_basicprofile', 'r_emailaddress', 'rw_company_admin', 'w_share'],
   passReqToCallback: true
 }, (req, accessToken, refreshToken, profile, done) => {
   if (req.user) {
@@ -313,6 +343,7 @@ passport.use(new LinkedInStrategy({
           user.profile.location = user.profile.location || profile._json.location.name;
           user.profile.picture = user.profile.picture || profile._json.pictureUrl;
           user.profile.website = user.profile.website || profile._json.publicProfileUrl;
+          user.linkedinProfile = profile._json;
           user.save((err) => {
             if (err) { return done(err); }
             req.flash('info', { msg: 'LinkedIn account has been linked.' });

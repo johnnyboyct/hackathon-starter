@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const passport = require('passport');
 const User = require('../models/User');
+const request = require("request")
 
 /**
  * GET /login
@@ -114,9 +115,45 @@ exports.postSignup = (req, res, next) => {
  * Profile page.
  */
 exports.getAccount = (req, res) => {
-  res.render('account/profile', {
-    title: 'Account Management'
+  User.findById(req.user.id, (err, user) => {
+    if (err) { return next(err); }
+
+    if(user.profile.phone){
+      var url = "https://api.pipl.com/search/v5/?phone=1"+user.profile.phone+"&key=sample_key&pretty=false";
+      console.log(url);
+      request({
+          url: url,
+          json: true
+      }, function (error, response, body) {
+
+          if (!error && response.statusCode === 200) {
+              console.log(body) // Print the json response
+              user.profile.phoneInfo = body;
+              user.save((err) => {
+                if (err) {
+                  if (err.code === 11000) {
+                    req.flash('errors', { msg: 'The phone sucks.' });
+                  }
+                  return next(err);
+                }
+                req.flash('success', { msg: 'Profile information has been updated.' });
+              });
+          }
+          res.render('account/profile', {
+            title: 'Account Management'
+          });
+      })
+    }else {
+      res.render('account/profile', {
+        title: 'Account Management'
+      });
+    }
+
+
   });
+
+
+
 };
 
 /**
@@ -141,6 +178,7 @@ exports.postUpdateProfile = (req, res, next) => {
     user.profile.gender = req.body.gender || '';
     user.profile.location = req.body.location || '';
     user.profile.website = req.body.website || '';
+    user.profile.phone = req.body.phone || '';
     user.save((err) => {
       if (err) {
         if (err.code === 11000) {
@@ -356,8 +394,8 @@ exports.postForgot = (req, res, next) => {
       });
       const mailOptions = {
         to: user.email,
-        from: 'hackathon@starter.com',
-        subject: 'Reset your password on Hackathon Starter',
+        from: process.env.MY_EMAIL,
+        subject: 'Reset your password on '+process.env.PROJECT_NAME,
         text: `You are receiving this email because you (or someone else) have requested the reset of the password for your account.\n\n
           Please click on the following link, or paste this into your browser to complete the process:\n\n
           http://${req.headers.host}/reset/${token}\n\n

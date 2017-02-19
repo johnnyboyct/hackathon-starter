@@ -19,6 +19,7 @@ const expressValidator = require('express-validator');
 const expressStatusMonitor = require('express-status-monitor');
 const sass = require('node-sass-middleware');
 const multer = require('multer');
+var cons = require('consolidate');
 
 const upload = multer({ dest: path.join(__dirname, 'uploads') });
 
@@ -60,7 +61,10 @@ mongoose.connection.on('error', () => {
  */
 app.set('port', process.env.PORT || 3000);
 app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
+
+app.engine('pug', cons.pug);
+app.engine('hbs', cons.handlebars);
+
 app.use(expressStatusMonitor());
 app.use(compression());
 app.use(sass({
@@ -115,7 +119,13 @@ app.use(express.static(path.join(__dirname, 'public'), { maxAge: 31557600000 }))
 /**
  * Primary app routes.
  */
+
+
+
+
+
 app.get('/', homeController.index);
+app.set('view engine', 'pug');
 app.get('/login', userController.getLogin);
 app.post('/login', userController.postLogin);
 app.get('/logout', userController.logout);
@@ -173,7 +183,7 @@ app.get('/auth/instagram', passport.authenticate('instagram'));
 app.get('/auth/instagram/callback', passport.authenticate('instagram', { failureRedirect: '/login' }), (req, res) => {
   res.redirect(req.session.returnTo || '/');
 });
-app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email', 'public_profile'] }));
+app.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email', 'public_profile', 'user_about_me', 'user_posts', 'user_photos', 'user_relationships', 'user_relationship_details', 'user_likes'] }));
 app.get('/auth/facebook/callback', passport.authenticate('facebook', { failureRedirect: '/login' }), (req, res) => {
   res.redirect(req.session.returnTo || '/');
 });
@@ -213,6 +223,20 @@ app.get('/auth/pinterest', passport.authorize('pinterest', { scope: 'read_public
 app.get('/auth/pinterest/callback', passport.authorize('pinterest', { failureRedirect: '/login' }), (req, res) => {
   res.redirect('/api/pinterest');
 });
+
+
+// app.get('/auth/forcedotcom', passport.authorize('forcedotcom'), {
+//   display: "page", // valid values are: "page", "popup", "touch", "mobile"
+//   prompt: "login consent", // valid values are: "login", "consent", or "login consent"
+//   login_hint: "login consent"
+// });
+// // this should match the callbackURL parameter above:
+// app.get('/auth/forcedotcom/callback',
+//   passport.authenticate('forcedotcom', { failureRedirect: '/error' }),
+//   function(req, res){
+//     res.redirect('/api/pinterest');
+//   }
+// );
 
 /**
  * Error Handler.

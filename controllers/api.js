@@ -96,12 +96,27 @@ exports.getTumblr = (req, res, next) => {
 exports.getFacebook = (req, res, next) => {
   const token = req.user.tokens.find(token => token.kind === 'facebook');
   graph.setAccessToken(token.accessToken);
-  graph.get(`${req.user.facebook}?fields=id,name,email,first_name,last_name,gender,link,locale,timezone`, (err, results) => {
+  graph.get(`${req.user.facebook}?fields=id,about,name,email,first_name,last_name,gender,link,locale,timezone,posts,political`, (err, results) => {
     if (err) { return next(err); }
-    res.render('api/facebook', {
-      title: 'Facebook API',
-      profile: results
+    console.log(results);
+    var AYLIENTextAPI = require('aylien_textapi');
+    var textapi = new AYLIENTextAPI({
+      application_id: process.env.AYLIEN_ID,
+      application_key: process.env.AYLIEN_KEY
     });
+    textapi.sentiment({
+      'text': results.about
+    }, function(error, response) {
+      if (error === null) {
+        console.log(response);
+        results.sentiment = response;
+      }
+      res.render('api/facebook', {
+        title: 'Facebook API',
+        profile: results
+      });
+    });
+
   });
 };
 
@@ -397,7 +412,7 @@ exports.postTwilio = (req, res, next) => {
 
   const message = {
     to: req.body.number,
-    from: '+13472235148',
+    from: '+19592008775',
     body: req.body.message
   };
   twilio.sendMessage(message, (err, responseData) => {

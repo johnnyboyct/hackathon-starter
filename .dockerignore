@@ -1,1 +1,4 @@
-node_modules
+./.git/
+./tmp/
+./log/
+./node_modules/
